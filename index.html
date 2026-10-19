@@ -3,18 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AMO Terengganu - Ambulans Siren Rush</title>
+  <title>AMO Terengganu - Ambulans Siren Emergency</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
     body { text-align: center; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 15px; }
     h1 { font-size: 22px; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); margin-bottom: 4px; }
     p.sub { font-size: 13px; color: #94a3b8; margin-bottom: 15px; }
 
+    /* DASHBOARD MASA & SKOR */
+    .dashboard { display: flex; justify-content: space-around; width: 320px; background: #1e293b; padding: 10px; border-radius: 10px; border: 1px solid #38bdf8; margin-bottom: 10px; }
+    .dash-box { font-size: 14px; font-weight: bold; }
+    .dash-box span { font-size: 18px; color: #facc15; }
+
     /* GAME CANVAS */
-    #gameCanvas { background: #334155; border: 3px solid #0284c7; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: manipulation; max-width: 100%; cursor: pointer; }
+    #gameCanvas { background: #334155; border: 3px solid #0284c7; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: manipulation; max-width: 100%; }
+
+    /* BUTANG KAWALAN */
+    .controls { display: flex; justify-content: space-between; width: 320px; margin-top: 10px; }
+    .btn-ctrl { width: 48%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 8px rgba(2, 132, 199, 0.4); }
+    .btn-ctrl:active { background: #0369a1; }
 
     /* BUTANG UTAMA */
-    .btn-view-all { width: 320px; padding: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: 1px solid #38bdf8; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 15px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); }
+    .btn-start { width: 320px; padding: 12px; background: #22c55e; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4); }
+    .btn-view-all { width: 320px; padding: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: 1px solid #38bdf8; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 10px; }
 
     /* BORANG SKOR DINAMIK */
     .form-container { margin-top: 15px; background: #1e293b; padding: 18px; border-radius: 12px; width: 320px; text-align: left; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
@@ -49,17 +60,28 @@
 </head>
 <body>
 
-  <h1>🚨 AMO Terengganu: Ambulans Siren Rush</h1>
-  <p class="sub">Tap KIRI / KANAN skrin untuk tukar lorong! Elak lalu lintas & kumpul mata.</p>
+  <h1>🚨 AMO Terengganu: Ambulans Siren</h1>
+  <p class="sub">Pandu Ambulans, potong kenderaan lain & kumpul Siren 🚨!</p>
 
-  <canvas id="gameCanvas" width="320" height="420"></canvas>
+  <div class="dashboard">
+    <div class="dash-box">Masa: <span id="timeLeft">30</span>s</div>
+    <div class="dash-box">Skor: <span id="score">0</span></div>
+  </div>
 
+  <canvas id="gameCanvas" width="320" height="360"></canvas>
+
+  <div class="controls">
+    <button class="btn-ctrl" onclick="moveLeft()">⬅️ KIRI</button>
+    <button class="btn-ctrl" onclick="moveRight()">KANAN ➡️</button>
+  </div>
+
+  <button class="btn-start" id="startBtn" onclick="mulaGame()">MULA GAME ▶️</button>
   <button class="btn-view-all" onclick="openModal()">📜 Lihat Top 10 Carta Kedudukan</button>
 
   <!-- BORANG PENDAFTARAN DINAMIK -->
   <div class="form-container" id="scoreForm" style="display: none;">
-    <h3 style="text-align: center; color: #facc15;">TAMAT MISION!</h3>
-    <p style="text-align: center; font-size: 14px; margin-bottom: 10px;">Skor Akhir: <b id="finalScore" style="font-size: 20px; color: #f87171;">0</b> pts</p>
+    <h3 style="text-align: center; color: #facc15;">TAMAT PERJALANAN!</h3>
+    <p style="text-align: center; font-size: 14px; margin-bottom: 10px;">Skor Akhir: <b id="finalScore" style="font-size: 20px; color: #4ade80;">0</b> pts</p>
     
     <label>Nama Penuh / FB:</label>
     <input type="text" id="nama" placeholder="Ahmad Zaki" required>
@@ -144,108 +166,80 @@
     const ctx = canvas.getContext("2d");
 
     // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
-    const SCRIPT_URL = "https://script.google.com/a/macros/moh.gov.my/s/AKfycbwsr7L44KxQKzP4MJxOJxNy8XNqXhPbPe28vV9kF6alf8DTeQwTa1ZoN1xQWg2_wqA5ng/exec";
+    const SCRIPT_URL = "https://script.google.com/a/macros/moh.gov.my/s/AKfycby8klZbBdfZfONvfFBm_C6SckeCSppJC0AwmVqPPbdiBNyCT0uzfpjLZKtEvc9M9U8cbg/exec";
 
-    const lanes = [53, 160, 267]; // 3 Lorong Utama
-    let currentLane = 1; // Bermula di Lorong Tengah
-    let playerY = 330;
-    
-    let obstacles = [];
-    let items = [];
-    let frame = 0;
+    const lanes = [55, 160, 265];
+    let currentLane = 1; // Lorong Tengah
+    let ambulance = { x: lanes[currentLane], y: 280, icon: '🚑' };
+    let traffic = [];
     let score = 0;
-    let speed = 3.2;
-    let roadOffset = 0;
-    let isInvincible = false;
-    let invincibleTimer = 0;
-    let gameOver = false;
+    let timeLeft = 30;
+    let gameInterval = null;
+    let timerInterval = null;
     let gameStarted = false;
+    let roadOffsetY = 0;
 
-    const obsIcons = ['🚗', '🚛', '🛢️'];
-    const itemIcons = ['🫀', '🚨', '🧰'];
+    const trafficTypes = [
+      { icon: '🚗', points: 0, isObstacle: true },
+      { icon: '🚚', points: 0, isObstacle: true },
+      { icon: '🚨', points: 20, isObstacle: false }, // Item Siren
+      { icon: '⛽', points: 15, isObstacle: false }  // Item Bahan Bakar
+    ];
 
-    function createObstacle() {
-      let lane = Math.floor(Math.random() * 3);
-      let icon = obsIcons[Math.floor(Math.random() * obsIcons.length)];
-      obstacles.push({ lane: lane, y: -40, icon: icon });
-    }
-
-    function createItem() {
-      let lane = Math.floor(Math.random() * 3);
-      let icon = itemIcons[Math.floor(Math.random() * itemIcons.length)];
-      items.push({ lane: lane, y: -40, icon: icon, collected: false });
+    function spawnTraffic() {
+      if (!gameStarted) return;
+      const laneIndex = Math.floor(Math.random() * 3);
+      const type = trafficTypes[Math.floor(Math.random() * trafficTypes.length)];
+      traffic.push({
+        x: lanes[laneIndex],
+        y: -40,
+        speed: 3.5 + Math.random() * 2,
+        icon: type.icon,
+        isObstacle: type.isObstacle,
+        points: type.points
+      });
     }
 
     function update() {
-      if (!gameStarted || gameOver) return;
+      if (!gameStarted) return;
 
-      frame++;
-      speed += 0.0008; // Kelajuan bertambah secara dinamik
-      roadOffset = (roadOffset + speed) % 40;
+      roadOffsetY = (roadOffsetY + 5) % 40;
 
-      if (isInvincible) {
-        invincibleTimer--;
-        if (invincibleTimer <= 0) isInvincible = false;
-      }
+      for (let i = 0; i < traffic.length; i++) {
+        let obj = traffic[i];
+        obj.y += obj.speed;
 
-      // Penjana Objek
-      if (frame % Math.max(35, Math.floor(90 / (speed * 0.4))) === 0) {
-        if (Math.random() < 0.65) createObstacle();
-        else createItem();
-      }
-
-      // Halangan
-      for (let i = 0; i < obstacles.length; i++) {
-        let obs = obstacles[i];
-        obs.y += speed;
-
-        if (obs.lane === currentLane && Math.abs(obs.y - playerY) < 35) {
-          if (!isInvincible) {
-            endGame();
-          } else {
-            obstacles.splice(i, 1);
+        // Semak Perlanggaran
+        if (Math.abs(obj.x - ambulance.x) < 30 && Math.abs(obj.y - ambulance.y) < 30) {
+          if (obj.isObstacle) {
+            score = Math.max(0, score - 10);
+            traffic.splice(i, 1);
             i--;
-            score += 10;
-          }
-        } else if (obs.y > canvas.height + 40) {
-          obstacles.splice(i, 1);
-          i--;
-        }
-      }
-
-      // Item / Power-Up
-      for (let i = 0; i < items.length; i++) {
-        let it = items[i];
-        it.y += speed;
-
-        if (!it.collected && it.lane === currentLane && Math.abs(it.y - playerY) < 35) {
-          it.collected = true;
-          if (it.icon === '🚨') {
-            isInvincible = true;
-            invincibleTimer = 180; // 3 saat kebal
-            score += 30;
           } else {
-            score += 20;
+            score += obj.points;
+            traffic.splice(i, 1);
+            i--;
           }
-        } else if (it.y > canvas.height + 40) {
-          items.splice(i, 1);
+          document.getElementById("score").innerText = Math.floor(score);
+        } else if (obj.y > canvas.height + 40) {
+          if (obj.isObstacle) score += 5; // Mata potong kenderaan dengan selamat
+          traffic.splice(i, 1);
           i--;
+          document.getElementById("score").innerText = Math.floor(score);
         }
       }
-
-      score += 0.1;
     }
 
     function draw() {
-      // Jalan Raya 3 Lorong
+      // Jalan Raya
       ctx.fillStyle = "#334155";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Garisan Putus-Putus
+      // Garisan Lorong Jalan
       ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 3;
       ctx.setLineDash([20, 20]);
-      ctx.lineDashOffset = -roadOffset;
+      ctx.lineWidth = 3;
+      ctx.lineDashOffset = -roadOffsetY;
 
       ctx.beginPath();
       ctx.moveTo(106, 0); ctx.lineTo(106, canvas.height);
@@ -253,101 +247,80 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Lukis Halangan
-      for (let obs of obstacles) {
+      // Lukis Trafik / Item
+      for (let obj of traffic) {
         ctx.font = "32px Arial";
-        ctx.fillText(obs.icon, lanes[obs.lane] - 16, obs.y);
+        ctx.fillText(obj.icon, obj.x - 16, obj.y);
       }
 
-      // Lukis Item
-      for (let it of items) {
-        if (!it.collected) {
-          ctx.font = "28px Arial";
-          ctx.fillText(it.icon, lanes[it.lane] - 14, it.y);
-        }
-      }
+      // Lukis Ambulans
+      ctx.font = "36px Arial";
+      ctx.fillText(ambulance.icon, ambulance.x - 18, ambulance.y);
 
-      // Lukis Ambulans (Pemain)
-      ctx.font = "38px Arial";
-      if (isInvincible && Math.floor(frame / 4) % 2 === 0) {
-        ctx.shadowColor = "#facc15";
-        ctx.shadowBlur = 15;
-      }
-      ctx.fillText("🚑", lanes[currentLane] - 19, playerY);
-      ctx.shadowBlur = 0;
-
-      // Dashboard Skor & Status Siren
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 15px Arial";
-      ctx.fillText("Skor: " + Math.floor(score), 15, 30);
-
-      if (isInvincible) {
-        ctx.fillStyle = "#facc15";
-        ctx.fillText("🚨 SIREN KEBAL AMBULANS!", 120, 30);
-      }
-
-      if (!gameStarted && !gameOver) {
+      if (!gameStarted) {
         ctx.fillStyle = "#38bdf8";
         ctx.font = "bold 14px Arial";
-        ctx.fillText("Tap KANAN / KIRI untuk tukar lorong!", 35, 200);
+        ctx.fillText("Tekan MULA GAME untuk memandu!", 45, 180);
       }
     }
 
     function loop() {
       update();
       draw();
-      if (gameStarted && !gameOver) requestAnimationFrame(loop);
+      if (gameStarted) requestAnimationFrame(loop);
     }
 
-    function moveLeft() { if (currentLane > 0) currentLane--; }
-    function moveRight() { if (currentLane < 2) currentLane++; }
-
-    function handleInput(x) {
-      if (!gameStarted && !gameOver) {
-        mulaGame();
-        return;
+    function moveLeft() {
+      if (currentLane > 0) {
+        currentLane--;
+        ambulance.x = lanes[currentLane];
       }
-      if (x < canvas.width / 2) moveLeft();
-      else moveRight();
+    }
+
+    function moveRight() {
+      if (currentLane < 2) {
+        currentLane++;
+        ambulance.x = lanes[currentLane];
+      }
     }
 
     function mulaGame() {
       score = 0;
-      frame = 0;
-      speed = 3.2;
+      timeLeft = 30;
       currentLane = 1;
-      obstacles = [];
-      items = [];
-      isInvincible = false;
+      ambulance.x = lanes[currentLane];
+      traffic = [];
       gameStarted = true;
-      gameOver = false;
+      document.getElementById("score").innerText = score;
+      document.getElementById("timeLeft").innerText = timeLeft;
       document.getElementById("scoreForm").style.display = "none";
-      document.getElementById("statusMsg").innerText = "";
+      document.getElementById("startBtn").disabled = true;
+
+      clearInterval(gameInterval);
+      gameInterval = setInterval(spawnTraffic, 650);
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timeLeft").innerText = timeLeft;
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+
       loop();
     }
 
     function endGame() {
-      gameOver = true;
       gameStarted = false;
+      clearInterval(gameInterval);
+      clearInterval(timerInterval);
+      document.getElementById("startBtn").disabled = false;
       document.getElementById("finalScore").innerText = Math.floor(score);
       document.getElementById("scoreForm").style.display = "block";
     }
 
     window.addEventListener("keydown", (e) => {
-      if (e.code === "ArrowLeft" || e.code === "KeyA") moveLeft();
-      if (e.code === "ArrowRight" || e.code === "KeyD") moveRight();
-      if (!gameStarted && e.code === "Space") mulaGame();
-    });
-
-    canvas.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      let touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-      handleInput(touchX);
-    });
-
-    canvas.addEventListener("mousedown", (e) => {
-      let mouseX = e.clientX - canvas.getBoundingClientRect().left;
-      handleInput(mouseX);
+      if (e.key === "ArrowLeft") moveLeft();
+      if (e.key === "ArrowRight") moveRight();
     });
 
     function tukarDaerah() {
@@ -380,4 +353,65 @@
               <div class="rank-item">
                 <span class="rank-num">#${i + 1}</span>
                 <span><b>${data[i].nama}</b> (${data[i].daerah || 'Luar Terengganu'}) - <i style="font-size:11px; color:#cbd5e0;">${labelJawatan}</i></span>
-                <span style="color: #facc15; font
+                <span style="color: #facc15; font-weight: bold;">${data[i].score} pts</span>
+              </div>
+            `;
+          }
+          document.getElementById("rankList").innerHTML = rankListHTML || "<p style='text-align:center; color:#64748b; padding:10px;'>Tiada data tambahan lagi.</p>";
+        })
+        .catch(err => console.error("Error loading leaderboard:", err));
+    }
+
+    function hantarSkor() {
+      let nama = document.getElementById("nama").value;
+      let noTel = document.getElementById("noTel").value;
+      let daerahSelect = document.getElementById("daerah").value;
+      let daerahLuar = document.getElementById("daerahLuar").value;
+      let kategori = document.getElementById("kategori").value;
+      let jawatan = document.getElementById("jawatan").value;
+      let statusMsg = document.getElementById("statusMsg");
+
+      let daerahFinal = daerahSelect;
+      if (daerahSelect === "Luar Terengganu") {
+        if (!daerahLuar) {
+          alert("Sila nyatakan Negeri/Daerah asal anda!");
+          return;
+        }
+        daerahFinal = daerahLuar;
+      }
+
+      if (!nama || !noTel || !daerahSelect) {
+        alert("Sila isi Nama, No. WhatsApp, dan Pilih Daerah!");
+        return;
+      }
+
+      if (kategori === "Warga KKM" && !jawatan) {
+        alert("Sila nyatakan jawatan anda!");
+        return;
+      }
+
+      statusMsg.style.color = "#facc15";
+      statusMsg.innerText = "Menghantar data...";
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama: nama, noTel: noTel, daerah: daerahFinal, kategori: kategori, jawatan: jawatan, score: Math.floor(score) })
+      })
+      .then(() => {
+        statusMsg.style.color = "#4ade80";
+        statusMsg.innerText = "✅ Skor berjaya dihantar!";
+        setTimeout(() => { loadLeaderboard(); }, 1500);
+      })
+      .catch(err => {
+        statusMsg.style.color = "#f87171";
+        statusMsg.innerText = "❌ Gagal hantar data.";
+      });
+    }
+
+    draw();
+    loadLeaderboard();
+  </script>
+</body>
+</html>
